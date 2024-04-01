@@ -27,7 +27,7 @@ local function set_plug_keymap(key)
 end
 
 local function on_bufenter(is_force)
-  if not is_force and vim.closer_pair_tbl then return end
+  if not is_force and vim.b.closer_pair_tbl then return end
 
   vim.b.closer_pair_tbl = vim.b.closer_pair_tbl or default_pair_tbl
 
@@ -65,7 +65,8 @@ function M.setup(opts)
     })
   end
 
-  on_bufenter()
+  vim.cmd 'filetype detect'
+  on_bufenter(true)
 
   for _, key in ipairs({ 'bs', 'cr', 'space' }) do
     set_plug_keymap(key)
