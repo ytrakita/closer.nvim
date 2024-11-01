@@ -11,12 +11,6 @@ local function set_pair_keymap(lhs, fn)
   map('i', lhs, rhs, { expr = true, buffer = true })
 end
 
-local function set_plug_keymap(key)
-  local lhs = ('<Plug>(closer_%s)'):format(key)
-  local rhs = function() return rhs_fns[key]() end
-  map('i', lhs, rhs, { expr = true })
-end
-
 local function on_bufenter(is_force)
   if not is_force and vim.b.closer_pair_tbl then return end
 
@@ -39,9 +33,15 @@ M.config = {
     ['"'] = '"',
     ["'"] = "'",
   },
+  maps = {
+    bs = true,
+    c_h = true,
+    cr = true,
+    space = true,
+  },
 }
 
--- opts keys: pairs, ft
+-- opts keys: pairs, ft, maps
 function M.setup(opts)
   M.config = vim.tbl_deep_extend('force', M.config, opts or {})
 
@@ -65,8 +65,14 @@ function M.setup(opts)
   vim.cmd 'filetype detect'
   on_bufenter(true)
 
-  for _, key in ipairs({ 'bs', 'cr', 'space' }) do
-    set_plug_keymap(key)
+  for key, lhs in pairs({ bs = '<BS>', cr = '<CR>', space = ' ' }) do
+    if M.config.maps[key] then
+      map('i', lhs, rhs_fns[key], { expr = true })
+    end
+  end
+
+  if M.config.maps.c_h then
+    map('i', '<C-H>', rhs_fns.bs, { expr = true })
   end
 end
 
