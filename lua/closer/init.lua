@@ -14,7 +14,9 @@ end
 local function on_bufenter(is_force)
   if not is_force and vim.b.closer_pair_tbl then return end
 
-  vim.b.closer_pair_tbl = vim.b.closer_pair_tbl or M.config.pairs
+  vim.b.closer_pair_tbl = vim.b.closer_pair_tbl
+    or M.config.ft[api.nvim_get_option_value('filetype', { buf = 0 })]
+    or M.config.pairs
 
   for left, right in pairs(vim.b.closer_pair_tbl) do
     set_pair_keymap(left, 'close')
