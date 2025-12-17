@@ -2,7 +2,7 @@ local rhs_fns = require 'closer.rhs_fns'
 
 local api = vim.api
 local km = vim.keymap
-local vb = vim.b
+local b = vim.b
 
 local M = {}
 
@@ -12,13 +12,13 @@ local function set_pair_keymap(lhs, fn)
 end
 
 local function on_bufenter(is_force)
-  if not is_force and vb.closer_pair_tbl then return end
+  if not is_force and b.closer_pairs then return end
 
-  vb.closer_pair_tbl = vb.closer_pair_tbl
+  b.closer_pairs = b.closer_pairs
     or M.config.ft[api.nvim_get_option_value('filetype', { buf = 0 })]
     or M.config.pairs
 
-  for left, right in pairs(vb.closer_pair_tbl) do
+  for left, right in pairs(b.closer_pairs) do
     set_pair_keymap(left, 'close')
     if left ~= right then
       set_pair_keymap(right, 'skip')
@@ -53,12 +53,12 @@ function M.setup(opts)
     pattern = '*',
     callback = on_bufenter,
   })
-  for ft, pair_tbl in pairs(opts.ft) do
+  for ft, pairs in pairs(opts.ft) do
     api.nvim_create_autocmd('FileType', {
       group = group_id,
       pattern = ft,
       callback = function()
-        vb.closer_pair_tbl = pair_tbl
+        b.closer_pairs = pairs
         on_bufenter(true)
       end,
     })
