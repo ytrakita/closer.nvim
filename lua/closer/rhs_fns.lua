@@ -66,6 +66,17 @@ M.c_h = M.bs
 
 ---@param mode 'c'|'i'
 ---@return string
+function M.c_w(mode)
+  local left, right = get_adj_chars(mode)
+  if right == b.closer_pairs[left] then
+    return cont_undo_block(mode) .. '<C-W><Del>'
+  else
+    return '<C-W>'
+  end
+end
+
+---@param mode 'c'|'i'
+---@return string
 function M.cr(mode)
   if mode == 'c' then return '<CR>' end
   local left, right = get_adj_chars('i')

@@ -7,11 +7,12 @@ local b = vim.b
 local M = {}
 
 ---@alias closer.Pairs { [string]: string }
+---@alias closer.Mapfn 'bs'|'c_h'|'c_w'|'cr'|'space'
 
 ---@class closer.Config
 ---@field pairs closer.Pairs
 ---@field ft { [string]: closer.Pairs }
----@field maps { bs?: boolean, c_h?: boolean, cr?: boolean, space?:boolean }
+---@field maps table<closer.Mapfn, boolean>
 ---@field cmdline? boolean|closer.Pairs
 local config
 
@@ -29,6 +30,7 @@ local default = {
   maps = {
     bs = true,
     c_h = true,
+    c_w = true,
     cr = true,
     space = true,
   },
@@ -80,7 +82,9 @@ local function init()
   on_bufenter()
   set_pair_keymaps('c', config.cmdline)
 
-  local map = { bs = '<BS>', cr = '<CR>', space = ' ', c_h = '<C-H>' }
+  local map = {
+    bs = '<BS>', c_h = '<C-H>', c_w = '<C-W>', cr = '<CR>', space = ' ',
+  }
 
   for _, mode in ipairs { 'i', config.cmdline and 'c' } do
     for fname, lhs in pairs(map) do
