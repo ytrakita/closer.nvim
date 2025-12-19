@@ -3,48 +3,72 @@ local b = vim.b
 
 local M = {}
 
-local function get_char(row, col)
-  return api.nvim_buf_get_text(0, row - 1, col, row - 1, col + 1, {})[1]
+---@param mode 'c'|'i'
+---@return string, string
+local function get_adj_chars(mode)
+  local line, lpos
+  if mode == 'i' then
+    line = api.nvim_get_current_line()
+    lpos = api.nvim_win_get_cursor(0)[2] + 1
+  else
+    line = vim.fn.getcmdline()
+    lpos = vim.fn.getcmdpos()
+  end
+  line = '_' .. line
+  local rpos = lpos + 1
+  return line:sub(lpos, lpos), line:sub(rpos, rpos)
 end
 
-local function get_adj_chars()
-  local row, col = unpack(api.nvim_win_get_cursor(0))
-  local right = get_char(row, col)
-  local left = get_char(row, math.max(col - 1, 0))
-  return left, right
+---@param mode 'c'|'i'
+---@return string
+local function cont_undo_block(mode)
+  return mode == 'i' and '<C-G>U' or ''
 end
 
-function M.close(input)
-  local left, right = get_adj_chars()
+---@param input string
+---@param mode 'c'|'i'
+---@return string
+function M.close(input, mode)
+  local left, right = get_adj_chars(mode)
   if left == '\\' or (input == "'" and left:match('[%w]')) then
     return input
   elseif b.closer_pairs[input] == input and right == input then
-    return '<C-G>U<Right>'
+    return cont_undo_block(mode) .. '<Right>'
   else
-    return ('%s%s<C-G>U<Left>'):format(input, b.closer_pairs[input])
+    return input .. cont_undo_block(mode) .. b.closer_pairs[input] .. '<Left>'
   end
 end
 
-function M.skip(input)
-  local _, right = get_adj_chars()
+---@param input string
+---@param mode 'c'|'i'
+---@return string
+function M.skip(input, mode)
+  local _, right = get_adj_chars(mode)
   if right == input then
-    return '<C-G>U<Right>'
+    return cont_undo_block(mode) .. '<Right>'
   else
     return input
   end
 end
 
-function M.bs()
-  local left, right = get_adj_chars()
+---@param mode 'c'|'i'
+---@return string
+function M.bs(mode)
+  local left, right = get_adj_chars(mode)
   if right == b.closer_pairs[left] then
-    return '<C-G>U<BS><Del>'
+    return cont_undo_block(mode) .. '<BS><Del>'
   else
     return '<BS>'
   end
 end
 
-function M.cr()
-  local left, right = get_adj_chars()
+M.c_h = M.bs
+
+---@param mode 'c'|'i'
+---@return string
+function M.cr(mode)
+  if mode == 'c' then return '<CR>' end
+  local left, right = get_adj_chars('i')
   if left:match('[%(%{%[]') and right == b.closer_pairs[left] then
     return '<CR><C-O>O'
   else
@@ -52,10 +76,12 @@ function M.cr()
   end
 end
 
-function M.space()
-  local left, right = get_adj_chars()
+---@param mode 'c'|'i'
+---@return string
+function M.space(mode)
+  local left, right = get_adj_chars(mode)
   if left:match('[%(%{%[]') and right == b.closer_pairs[left] then
-    return '  <C-G>U<Left>'
+    return '  ' .. cont_undo_block(mode) .. '<Left>'
   else
     return ' '
   end

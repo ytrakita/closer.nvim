@@ -6,27 +6,17 @@ local b = vim.b
 
 local M = {}
 
-local function set_pair_keymap(lhs, fn)
-  local rhs = function() return rhs_fns[fn](lhs) end
-  km.set('i', lhs, rhs, { expr = true, buffer = true })
-end
+---@alias closer.Pairs { [string]: string }
 
-local function on_bufenter(is_force)
-  if not is_force and b.closer_pairs then return end
+---@class closer.Config
+---@field pairs closer.Pairs
+---@field ft { [string]: closer.Pairs }
+---@field maps { bs?: boolean, c_h?: boolean, cr?: boolean, space?:boolean }
+---@field cmdline? boolean|closer.Pairs
+local config
 
-  b.closer_pairs = b.closer_pairs
-    or M.config.ft[api.nvim_get_option_value('filetype', { buf = 0 })]
-    or M.config.pairs
-
-  for left, right in pairs(b.closer_pairs) do
-    set_pair_keymap(left, 'close')
-    if left ~= right then
-      set_pair_keymap(right, 'skip')
-    end
-  end
-end
-
-M.config = {
+---@type closer.Config
+local default = {
   pairs = {
     ['('] = ')',
     ['['] = ']',
@@ -35,47 +25,89 @@ M.config = {
     ['"'] = '"',
     ["'"] = "'",
   },
+  ft = {},
   maps = {
     bs = true,
     c_h = true,
     cr = true,
     space = true,
   },
+  cmdline = true,
 }
 
--- opts keys: pairs, ft, maps
-function M.setup(opts)
-  M.config = vim.tbl_deep_extend('force', M.config, opts or {})
+---@param mode 'c'|'i'
+---@param lhs string
+---@param fn 'close'|'skip'
+local function set_pair_keymap(mode, lhs, fn)
+  local rhs = function() return rhs_fns[fn](lhs, mode) end
+  km.set(mode, lhs, rhs, { expr = true, buffer = mode == 'i' })
+end
 
-  local group_id = api.nvim_create_augroup('closer', { clear = true })
-  api.nvim_create_autocmd('BufEnter', {
-    group = group_id,
-    pattern = '*',
-    callback = on_bufenter,
-  })
-  for ft, pairs in pairs(opts.ft) do
-    api.nvim_create_autocmd('FileType', {
-      group = group_id,
-      pattern = ft,
-      callback = function()
-        b.closer_pairs = pairs
-        on_bufenter(true)
-      end,
-    })
-  end
-
-  vim.cmd.filetype 'detect'
-  on_bufenter(true)
-
-  for key, lhs in pairs({ bs = '<BS>', cr = '<CR>', space = ' ' }) do
-    if M.config.maps[key] then
-      km.set('i', lhs, rhs_fns[key], { expr = true })
+---@param mode 'c'|'i'
+---@param pairs_ closer.Pairs|false
+local function set_pair_keymaps(mode, pairs_)
+  if not pairs_ then return end
+  -- if not pairs_ or vim.tbl_isempty(pairs_) then return end
+  for left, right in pairs(pairs_) do
+    set_pair_keymap(mode, left, 'close')
+    if left ~= right then
+      set_pair_keymap(mode, right, 'skip')
     end
   end
+end
 
-  if M.config.maps.c_h then
-    km.set('i', '<C-H>', rhs_fns.bs, { expr = true })
+local function on_bufenter()
+  if b.closer_pairs then return end
+  local ft = api.nvim_get_option_value('filetype', { buf = 0 })
+  b.closer_pairs = config.ft[ft] or config.pairs
+  set_pair_keymaps('i', b.closer_pairs)
+end
+
+local function on_filetype()
+  if b.closer_pairs then
+    for left, right in pairs(b.closer_pairs) do
+      km.del('i', left, { buffer = true })
+      if left ~= right then
+        km.del('i', right, { buffer = true })
+      end
+    end
+    b.closer_pairs = nil
   end
+  on_bufenter()
+end
+
+local function init()
+  on_bufenter()
+  set_pair_keymaps('c', config.cmdline)
+
+  local map = { bs = '<BS>', cr = '<CR>', space = ' ', c_h = '<C-H>' }
+
+  for _, mode in ipairs { 'i', config.cmdline and 'c' } do
+    for fname, lhs in pairs(map) do
+      if config.maps[fname] then
+        local fn = function() return rhs_fns[fname](mode) end
+        km.set(mode, lhs, fn, { expr = true })
+      end
+    end
+  end
+end
+
+---@param opts closer.Config
+function M.setup(opts)
+  config = vim.tbl_deep_extend('force', default, opts or {})
+  if config.cmdline == true then
+    config.cmdline = config.pairs
+  end
+
+  local group = api.nvim_create_augroup('closer', { clear = true })
+  local enter = { group = group, pattern = '*', callback = on_bufenter }
+  api.nvim_create_autocmd('BufEnter', enter)
+  for ft in pairs(opts.ft) do
+    local filetype = { group = group, pattern = ft, callback = on_filetype }
+    api.nvim_create_autocmd('FileType', filetype)
+  end
+
+  init()
 end
 
 return M
