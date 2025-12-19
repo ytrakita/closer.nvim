@@ -4,7 +4,8 @@ local b = vim.b
 local M = {}
 
 ---@param mode 'c'|'i'
----@return string, string
+---@return string
+---@return string
 local function get_adj_chars(mode)
   local line, lpos
   if mode == 'i' then
