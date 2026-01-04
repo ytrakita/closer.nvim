@@ -1,45 +1,16 @@
+local config = require 'closer.config'
+
 local api = vim.api
 local km = vim.keymap
 local b = vim.b
 
 local M = {}
 
----@alias closer.Pairs table<string, string>
----@alias closer.Mapfn 'bs'|'c_h'|'c_w'|'cr'|'space'
-
----@class closer.Config
----@field pairs? closer.Pairs
----@field ft? table<string, closer.Pairs>
----@field maps? table<closer.Mapfn, boolean>
----@field cmdline? boolean|closer.Pairs
-local config
-
----@type closer.Config
-local default = {
-  pairs = {
-    ['('] = ')',
-    ['['] = ']',
-    ['{'] = '}',
-    ['`'] = '`',
-    ['"'] = '"',
-    ["'"] = "'",
-  },
-  ft = {},
-  maps = {
-    bs = true,
-    c_h = true,
-    c_w = true,
-    cr = true,
-    space = true,
-  },
-  cmdline = true,
-}
-
 ---@param mode 'c'|'i'
 ---@param lhs string
 ---@param fn 'close'|'skip'
 local function set_pair_keymap(mode, lhs, fn)
-  local rhs = function() return require 'closer.rhs_fns'[fn](lhs, mode) end
+  local rhs = function() return require('closer.rhs_fns')[fn](lhs, mode) end
   km.set(mode, lhs, rhs, { expr = true, buffer = mode == 'i' })
 end
 
@@ -58,7 +29,7 @@ end
 function M.buf_setup()
   if b.closer_pairs then return end
   local ft = api.nvim_get_option_value('filetype', { buf = 0 })
-  b.closer_pairs = config.ft[ft] or config.pairs
+  b.closer_pairs = config.get('ft')[ft] or config.get 'pairs'
   set_pair_keymaps('i', b.closer_pairs)
 end
 
@@ -77,15 +48,15 @@ end
 
 local function init()
   M.buf_setup()
-  set_pair_keymaps('c', config.cmdline)
+  set_pair_keymaps('c', config.get 'cmdline')
 
   local map = {
     bs = '<BS>', c_h = '<C-H>', c_w = '<C-W>', cr = '<CR>', space = ' ',
   }
 
-  for _, mode in ipairs { 'i', config.cmdline and 'c' } do
+  for _, mode in ipairs { 'i', config.get 'cmdline' and 'c' } do
     for fname, lhs in pairs(map) do
-      if config.maps[fname] then
+      if config.get('maps')[fname] then
         local fn = function() return require 'closer.rhs_fns'[fname](mode) end
         km.set(mode, lhs, fn, { expr = true })
       end
@@ -93,17 +64,14 @@ local function init()
   end
 end
 
----@param opts closer.Config?
+---@param opts? closer.Config
 function M.setup(opts)
-  config = vim.tbl_deep_extend('force', default, opts or {})
-  if config.cmdline == true then
-    config.cmdline = config.pairs
-  end
+  require 'closer.config'.setup(opts)
 
   local group = api.nvim_create_augroup('closer', { clear = true })
   local enter = { group = group, pattern = '*', callback = M.buf_setup }
   api.nvim_create_autocmd('BufEnter', enter)
-  for ft in pairs(config.ft) do
+  for ft in pairs(config.get 'ft') do
     local filetype = { group = group, pattern = ft, callback = M.buf_refresh }
     api.nvim_create_autocmd('FileType', filetype)
   end

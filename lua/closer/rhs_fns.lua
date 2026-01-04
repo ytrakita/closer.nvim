@@ -1,3 +1,5 @@
+local config = require 'closer.config'
+
 local api = vim.api
 local b = vim.b
 
@@ -26,17 +28,25 @@ local function cont_undo_block(mode)
   return mode == 'i' and '<C-G>U' or ''
 end
 
+---comment
+---@param mode 'c'|'i'
+---@return closer.Pairs
+local function get_pairs(mode)
+  return mode == 'i' and b.closer_pairs or config.get('cmdline')
+end
+
 ---@param input string
 ---@param mode 'c'|'i'
 ---@return string
 function M.close(input, mode)
   local left, right = get_adj_chars(mode)
+  local pairs_ = get_pairs(mode)
   if left == '\\' or (input == "'" and left:match('[%w]')) then
     return input
-  elseif b.closer_pairs[input] == input and right == input then
+  elseif pairs_[input] == input and right == input then
     return cont_undo_block(mode) .. '<Right>'
   else
-    return input .. cont_undo_block(mode) .. b.closer_pairs[input] .. '<Left>'
+    return input .. cont_undo_block(mode) .. pairs_[input] .. '<Left>'
   end
 end
 
@@ -56,7 +66,7 @@ end
 ---@return string
 function M.bs(mode)
   local left, right = get_adj_chars(mode)
-  if right == b.closer_pairs[left] then
+  if right == get_pairs(mode)[left] then
     return cont_undo_block(mode) .. '<BS><Del>'
   else
     return '<BS>'
@@ -69,7 +79,7 @@ M.c_h = M.bs
 ---@return string
 function M.c_w(mode)
   local left, right = get_adj_chars(mode)
-  if right == b.closer_pairs[left] then
+  if right == get_pairs(mode)[left] then
     return cont_undo_block(mode) .. '<C-W><Del>'
   else
     return '<C-W>'
@@ -81,7 +91,7 @@ end
 function M.cr(mode)
   if mode == 'c' then return '<CR>' end
   local left, right = get_adj_chars('i')
-  if left:match('[%(%{%[]') and right == b.closer_pairs[left] then
+  if left:match('[%(%{%[]') and right == get_pairs(mode)[left] then
     return '<CR><C-O>O'
   else
     return '<CR>'
@@ -92,7 +102,7 @@ end
 ---@return string
 function M.space(mode)
   local left, right = get_adj_chars(mode)
-  if left:match('[%(%{%[]') and right == b.closer_pairs[left] then
+  if left:match('[%(%{%[]') and right == get_pairs(mode)[left] then
     return '  ' .. cont_undo_block(mode) .. '<Left>'
   else
     return ' '
