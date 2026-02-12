@@ -28,11 +28,10 @@ local function cont_undo_block(mode)
   return mode == 'i' and '<C-G>U' or ''
 end
 
----comment
 ---@param mode 'c'|'i'
 ---@return closer.Pairs
 local function get_pairs(mode)
-  return mode == 'i' and b.closer_pairs or config.get('cmdline')
+  return mode == 'i' and b.closer_pairs or config.get 'cmdline'
 end
 
 ---@param input string
@@ -41,7 +40,7 @@ end
 function M.close(input, mode)
   local left, right = get_adj_chars(mode)
   local pairs_ = get_pairs(mode)
-  if left == '\\' or (input == "'" and left:match('[%w]')) then
+  if left == '\\' or (input == "'" and left:match '[%w]') then
     return input
   elseif pairs_[input] == input and right == input then
     return cont_undo_block(mode) .. '<Right>'
@@ -90,8 +89,8 @@ end
 ---@return string
 function M.cr(mode)
   if mode == 'c' then return '<CR>' end
-  local left, right = get_adj_chars('i')
-  if left:match('[%(%{%[]') and right == get_pairs(mode)[left] then
+  local left, right = get_adj_chars 'i'
+  if left:match '[%(%{%[]' and right == get_pairs(mode)[left] then
     return '<CR><C-O>O'
   else
     return '<CR>'
@@ -102,7 +101,7 @@ end
 ---@return string
 function M.space(mode)
   local left, right = get_adj_chars(mode)
-  if left:match('[%(%{%[]') and right == get_pairs(mode)[left] then
+  if left:match '[%(%{%[]' and right == get_pairs(mode)[left] then
     return '  ' .. cont_undo_block(mode) .. '<Left>'
   else
     return ' '

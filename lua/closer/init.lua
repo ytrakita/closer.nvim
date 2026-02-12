@@ -10,7 +10,7 @@ local M = {}
 ---@param lhs string
 ---@param fn 'close'|'skip'
 local function set_pair_keymap(mode, lhs, fn)
-  local rhs = function() return require('closer.rhs_fns')[fn](lhs, mode) end
+  local rhs = function() return require 'closer.rhs_fns'[fn](lhs, mode) end
   km.set(mode, lhs, rhs, { expr = true, buffer = mode == 'i' })
 end
 
@@ -29,7 +29,7 @@ end
 function M.buf_setup()
   if b.closer_pairs then return end
   local ft = api.nvim_get_option_value('filetype', { buf = 0 })
-  b.closer_pairs = config.get('ft')[ft] or config.get 'pairs'
+  b.closer_pairs = config.get 'ft'[ft] or config.get 'pairs'
   set_pair_keymaps('i', b.closer_pairs)
 end
 
@@ -50,13 +50,11 @@ local function init()
   M.buf_setup()
   set_pair_keymaps('c', config.get 'cmdline')
 
-  local map = {
-    bs = '<BS>', c_h = '<C-H>', c_w = '<C-W>', cr = '<CR>', space = ' ',
-  }
-
   for _, mode in ipairs { 'i', config.get 'cmdline' and 'c' } do
-    for fname, lhs in pairs(map) do
-      if config.get('maps')[fname] then
+    for fname, lhs in pairs {
+      bs = '<BS>', c_h = '<C-H>', c_w = '<C-W>', cr = '<CR>', space = ' ',
+    } do
+      if config.get 'maps'[fname] then
         local fn = function() return require 'closer.rhs_fns'[fname](mode) end
         km.set(mode, lhs, fn, { expr = true })
       end
